@@ -21,9 +21,12 @@ import org.wikiclean.WikiClean.WikiLanguage;
 public class WikiCleanBuilder {
   private boolean withTitle = false;
   private boolean withFooter = false;
+  private boolean withWikilinks = false;
+  private boolean withCategory = false;
   private WikiLanguage lang = WikiLanguage.EN;
 
-  public WikiCleanBuilder() {}
+  public WikiCleanBuilder() {
+  }
 
   public WikiCleanBuilder withTitle(boolean flag) {
     this.withTitle = flag;
@@ -32,6 +35,16 @@ public class WikiCleanBuilder {
 
   public WikiCleanBuilder withFooter(boolean flag) {
     this.withFooter = flag;
+    return this;
+  }
+
+  public WikiCleanBuilder withWikilinks(boolean flag) {
+    this.withWikilinks = flag;
+    return this;
+  }
+
+  public WikiCleanBuilder withCategory(boolean flag) {
+    this.withCategory = flag;
     return this;
   }
 
@@ -44,8 +57,10 @@ public class WikiCleanBuilder {
     WikiClean clean = new WikiClean();
     clean.setWithTitle(withTitle);
     clean.setWithFooter(withFooter);
+    clean.setWithWikiLinks(withWikilinks);
+    clean.setWithCategory(withCategory);
     clean.setLanguage(lang);
-    
+
     return clean;
   }
 }

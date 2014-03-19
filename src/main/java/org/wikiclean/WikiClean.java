@@ -21,14 +21,20 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang.StringEscapeUtils;
 
 public class WikiClean {
-  public static enum WikiLanguage { EN, DE, ZH };
+  public static enum WikiLanguage {
+    EN, DE, ZH
+  };
 
   private boolean withTitle;
   private boolean withFooter;
+  private boolean withWikilinks;
+  private boolean withCategory;
+
   private WikiLanguage lang;
 
   // Use the builder to construct.
-  protected WikiClean() {}
+  protected WikiClean() {
+  }
 
   protected void setWithTitle(boolean flag) {
     this.withTitle = flag;
@@ -36,6 +42,22 @@ public class WikiClean {
 
   public boolean getWithTitle() {
     return withTitle;
+  }
+
+  protected void setWithWikiLinks(boolean flag) {
+    this.withWikilinks = flag;
+  }
+
+  public boolean getsetWithWikiLinks() {
+    return withWikilinks;
+  }
+
+  protected void setWithCategory(boolean flag) {
+    this.withCategory = flag;
+  }
+
+  public boolean getWithCategory() {
+    return withCategory;
   }
 
   protected void setWithFooter(boolean flag) {
@@ -65,7 +87,7 @@ public class WikiClean {
     }
     return StringEscapeUtils.unescapeHtml(s.substring(start + 7, end));
   }
-  
+
   private static final String XML_START_TAG_ID = "<id>";
   private static final String XML_END_TAG_ID = "</id>";
 
@@ -108,8 +130,16 @@ public class WikiClean {
     content = removeHtmlComments(content);
     content = removeEmphasis(content);
     content = removeHeadings(content);
-    content = removeCategoryLinks(content);
-    content = removeLinks(content);
+
+    // An alternate way is to construct a document by fetching different parts and putting them
+    // together.
+    // e.g. List<Category> cat = getCategories();
+    if (!withCategory) {
+      content = removeCategoryLinks(content);
+    }
+    if (!withWikilinks) {
+      content = removeLinks(content);
+    }
     content = removeMath(content);
     content = removeGallery(content);
     content = removeNoToc(content);
@@ -131,8 +161,10 @@ public class WikiClean {
     return content.trim();
   }
 
-  private static final Pattern UNIT_CONVERSION1 = Pattern.compile("\\{\\{convert\\|(\\d+)\\|([^|]+)\\}\\}");
-  private static final Pattern UNIT_CONVERSION2 = Pattern.compile("\\{\\{convert\\|(\\d+)\\|([^|]+)\\|[^}]+\\}\\}");
+  private static final Pattern UNIT_CONVERSION1 = Pattern
+      .compile("\\{\\{convert\\|(\\d+)\\|([^|]+)\\}\\}");
+  private static final Pattern UNIT_CONVERSION2 = Pattern
+      .compile("\\{\\{convert\\|(\\d+)\\|([^|]+)\\|[^}]+\\}\\}");
 
   protected String fixUnitConversion(String s) {
     String t = UNIT_CONVERSION1.matcher(s).replaceAll("$1 $2");
@@ -188,7 +220,7 @@ public class WikiClean {
 
     return s;
   }
-  
+
   private static final Pattern MULTIPLE_NEWLINES = Pattern.compile("[\\n\\r][\\n\\r]+");
 
   protected String compressMultipleNewlines(String s) {
@@ -231,30 +263,32 @@ public class WikiClean {
       s = FOOTER_DE5.matcher(s).replaceAll("");
       s = FOOTER_DE6.matcher(s).replaceAll("");
     }
-    
+
     return s;
   }
 
-  private static final Pattern CATEGORY_LINKS_EN = Pattern.compile("\\[\\[Category:([^\\]]+)\\]\\]");
-  private static final Pattern CATEGORY_LINKS_DE = Pattern.compile("\\[\\[Kategorie:([^\\]]+)\\]\\]");
+  private static final Pattern CATEGORY_LINKS_EN = Pattern
+      .compile("\\[\\[Category:([^\\]]+)\\]\\]");
+  private static final Pattern CATEGORY_LINKS_DE = Pattern
+      .compile("\\[\\[Kategorie:([^\\]]+)\\]\\]");
 
   protected String removeCategoryLinks(String s) {
-    if ( lang.equals(WikiLanguage.EN)) {
+    if (lang.equals(WikiLanguage.EN)) {
       return CATEGORY_LINKS_EN.matcher(s).replaceAll("");
     }
 
-    if ( lang.equals(WikiLanguage.DE)) {
+    if (lang.equals(WikiLanguage.DE)) {
       return CATEGORY_LINKS_DE.matcher(s).replaceAll("");
     }
 
     return s;
   }
 
-  private static final Pattern LINKS1 = Pattern.compile("\\[\\[[^\\]]+\\|([^\\]]+)\\]\\]");
-  private static final Pattern LINKS2 = Pattern.compile("(\\[\\[|\\]\\])");
+  private static final Pattern RENAMED_INTERNAL_LINK = Pattern.compile("\\[\\[[^\\]]+\\|([^\\]]+)\\]\\]");
+  private static final Pattern INTERNAL_LINK = Pattern.compile("(\\[\\[|\\]\\])");
 
   protected String removeLinks(String s) {
-    return LINKS2.matcher(LINKS1.matcher(s).replaceAll("$1")).replaceAll("");
+    return INTERNAL_LINK.matcher(RENAMED_INTERNAL_LINK.matcher(s).replaceAll("$1")).replaceAll("");
   }
 
   private static final Pattern HEADINGS = Pattern.compile("=+\\s?(.*?)=+");
@@ -270,8 +304,8 @@ public class WikiClean {
     return EMPHASIS.matcher(s).replaceAll("");
   }
 
-  private static final Pattern HTML_COMMENT = Pattern.compile("(<|&lt;|&#60;)!--.*?--(>|&gt;|&#62;)",
-      Pattern.DOTALL);
+  private static final Pattern HTML_COMMENT = Pattern.compile(
+      "(<|&lt;|&#60;)!--.*?--(>|&gt;|&#62;)", Pattern.DOTALL);
 
   protected String removeHtmlComments(String s) {
     return HTML_COMMENT.matcher(s).replaceAll("");
@@ -282,13 +316,14 @@ public class WikiClean {
   private static final Pattern REF2 = Pattern.compile("&lt;ref.*?&lt;/ref&gt;", Pattern.DOTALL);
 
   protected String removeRefs(String s) {
-    s = BR.matcher(s).replaceAll("");     // See test case for why we do this.
+    s = BR.matcher(s).replaceAll(""); // See test case for why we do this.
     s = REF1.matcher(s).replaceAll("");
     s = REF2.matcher(s).replaceAll("");
     return s;
   }
 
-  // Note that WiktionaryLinks have the form [[wikt:anarchism|anarchism]], which is easily confused with
+  // Note that WiktionaryLinks have the form [[wikt:anarchism|anarchism]], which is easily confused
+  // with
   // inter-wikilinks. The distinguishing characteristic is the lack of pipe (|).
   private static final Pattern INTER_WIKI_LINKS = Pattern.compile("\\[\\[[a-z\\-]+:[^|\\]]+\\]\\]");
 
@@ -302,9 +337,8 @@ public class WikiClean {
     private static final int STATE_1OPEN_BRACKET = 2;
 
     protected static String remove(String s) {
-      String[] labels = { "[[File:", "[[Image:",
-          "[[Datei" // We see this in de wikipedia.
-          };
+      String[] labels = { "[[File:", "[[Image:", "[[Datei" // We see this in de wikipedia.
+      };
       for (String label : labels) {
         s = removeLabel(s, label);
       }
@@ -368,7 +402,8 @@ public class WikiClean {
     private static final int STATE_1CLOSE_BRACE = 1;
     private static final int STATE_1OPEN_BRACE = 2;
 
-    // This method encodes a finite state machine to handle nested double braces (e.g., in infoboxes).
+    // This method encodes a finite state machine to handle nested double braces (e.g., in
+    // infoboxes).
     protected static String remove(String s) {
       int i = s.indexOf("{{");
       while (i != -1) {
